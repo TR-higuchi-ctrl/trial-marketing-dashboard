@@ -20,6 +20,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px}
 .topbar h1{font-size:17px;font-weight:600}
 .topbar-meta{font-size:12px;color:var(--faint)}
+.topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
 .store-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem}
 .chip{padding:6px 16px;font-size:13px;border:1px solid var(--border-s);border-radius:20px;cursor:pointer;background:var(--surface);color:var(--muted);display:inline-flex;align-items:center;gap:6px;transition:all .15s}
 .chip:hover{background:var(--gray)}
@@ -38,7 +39,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .met{background:var(--gray);border-radius:var(--r);padding:.75rem 1rem}
 .met-l{font-size:11px;color:var(--muted);margin-bottom:3px}
 .met-v{font-size:19px;font-weight:600;line-height:1.2}
-.met-s{font-size:11px;color:var(--faint);margin-top:2px}
 .st{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
 .tg{display:inline-flex;align-items:center;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500}
 .tg-d{background:var(--red-bg);color:var(--red-t)}
@@ -81,10 +81,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .ctbl tr.hl td{color:var(--blue-t);font-weight:600}
 .btn{padding:7px 16px;font-size:13px;border:1px solid var(--border-s);border-radius:var(--r);cursor:pointer;background:var(--surface);color:var(--text);display:inline-flex;align-items:center;gap:5px;transition:background .12s}
 .btn:hover{background:var(--gray)}
+.btn-p{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-p:hover{background:var(--blue-t)}
+.btn-danger{background:var(--red-bg);color:var(--red-t);border-color:#f09595}
+.btn-danger:hover{background:#f7c1c1}
 .loading{text-align:center;padding:3rem 1rem;color:var(--faint)}
 .spinner{display:inline-block;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;margin-bottom:8px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .err{background:var(--red-bg);color:var(--red-t);border:1px solid #f09595;border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1rem;font-size:13px;line-height:1.6}
+
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--rl);padding:1.5rem;width:min(560px,100%);margin:auto}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted);padding:0 4px}
+.modal-close:hover{color:var(--text)}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:.75rem}
+.field label{font-size:12px;color:var(--muted);font-weight:500}
+.field input,.field select,.field textarea{font-size:13px;padding:7px 10px;border-radius:var(--r);border:1px solid var(--border-s);background:var(--surface);color:var(--text);width:100%}
+.field textarea{min-height:72px;resize:vertical}
+.field-hint{font-size:11px;color:var(--faint);margin-top:2px}
+.modal-footer{display:flex;justify-content:space-between;align-items:center;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)}
+.modal-footer-right{display:flex;gap:8px}
+
+/* ── Download banner ── */
+.dl-banner{background:var(--green-bg);border:1px solid #97C459;border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1rem;font-size:13px;line-height:1.6;display:none}
+.dl-banner.show{display:block}
+.dl-banner strong{color:var(--green-t)}
+.dl-steps{margin-top:.5rem;padding-left:1.25rem;color:var(--green-t);font-size:12px}
+.dl-steps li{margin-bottom:2px}
 </style>
 </head>
 <body>
@@ -94,8 +120,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <h1>🏪 新規出店戦略ダッシュボード</h1>
       <div class="topbar-meta" id="meta">読み込み中...</div>
     </div>
-    <button class="btn" onclick="loadData()">↻ 更新</button>
+    <div class="topbar-actions">
+      <button class="btn" onclick="loadData()">↻ 更新</button>
+      <button class="btn btn-p" onclick="openModal(null)">＋ 店舗追加</button>
+    </div>
   </div>
+
+  <!-- ダウンロード案内バナー -->
+  <div class="dl-banner" id="dlBanner">
+    <strong>✅ stores.json をダウンロードしました</strong>
+    <ol class="dl-steps">
+      <li>GitHubの <code>trial-marketing-dashboard</code> リポジトリを開く</li>
+      <li><code>stores.json</code> をクリック → 右上の鉛筆マーク（編集）をクリック</li>
+      <li>画面右上の「…」→「Upload file」で今ダウンロードしたファイルを上書き</li>
+      <li>「Commit changes」を押せば全員に反映されます</li>
+    </ol>
+  </div>
+
   <div class="store-chips" id="chips"></div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('ov')">① 商圏概要</button>
@@ -108,10 +149,77 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   <div id="p-ck" class="panel"></div>
   <div id="p-st" class="panel"></div>
 </div>
-<script>
-const JSON_URL = "stores.json";
-let stores=[], curId=null, curTab='ov';
 
+<!-- 店舗追加・編集モーダル -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">店舗を追加</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="field"><label>店舗名 *</label><input id="f-name" placeholder="例：大森店"/></div>
+    <div class="field"><label>所在地</label><input id="f-loc" placeholder="例：東京都大田区"/></div>
+    <div class="field"><label>ステータス</label>
+      <select id="f-status">
+        <option value="準備中">準備中</option>
+        <option value="出店前">出店前（90日以内）</option>
+        <option value="開店済">開店済</option>
+      </select>
+    </div>
+    <div class="field"><label>開店予定日</label><input id="f-open" placeholder="例：2027年春"/></div>
+    <div class="field"><label>市全体人口</label><input id="f-pop" placeholder="例：約70万人"/></div>
+    <div class="field"><label>高齢化率</label><input id="f-aging" placeholder="例：約25%"/></div>
+    <div class="field"><label>昼夜間人口比</label><input id="f-ratio" placeholder="例：0.85"/></div>
+    <div class="field"><label>主要ターゲット層</label><input id="f-target" placeholder="例：30〜40代ファミリー"/></div>
+    <div class="field"><label>商圏アラート（一言説明）</label><textarea id="f-alert" placeholder="例：郊外型・車社会商圏。競合はイオンのみ。"></textarea></div>
+    <div class="field"><label>競合激戦度</label>
+      <select id="f-intensity">
+        <option value="最高">最高（1km圏5社以上）</option>
+        <option value="高">高（3〜4社）</option>
+        <option value="中">中（2〜3社）</option>
+        <option value="低">低（1社以下）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>主要競合</label>
+      <div id="comps-list"></div>
+      <button class="btn" style="margin-top:6px;font-size:12px" onclick="addCompRow()">＋ 競合を追加</button>
+    </div>
+    <div class="field"><label>特に強い需要</label><input id="f-demand" placeholder="例：惣菜・即食・酒"/></div>
+    <div class="field"><label>購買行動傾向</label><input id="f-behavior" placeholder="例：帰宅後・夜間買物"/></div>
+    <div class="field"><label>勝ち筋メモ</label><textarea id="f-strategy" placeholder="例：惣菜×EDLPで差別化。TRIAL+会員を3ヶ月で60%目標。"></textarea></div>
+    <div class="field">
+      <label>リスク</label>
+      <div id="risks-list"></div>
+      <button class="btn" style="margin-top:6px;font-size:12px" onclick="addRiskRow()">＋ リスクを追加</button>
+    </div>
+    <div class="field">
+      <label>現地確認が必要な情報</label>
+      <div id="needs-list"></div>
+      <button class="btn" style="margin-top:6px;font-size:12px" onclick="addNeedRow()">＋ 項目を追加</button>
+    </div>
+    <div class="field">
+      <label>根拠・情報ソース</label>
+      <div id="ev-list"></div>
+      <button class="btn" style="margin-top:6px;font-size:12px" onclick="addEvRow()">＋ 根拠を追加</button>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="btn-delete" onclick="deleteStore()" style="display:none">削除</button>
+      <div class="modal-footer-right">
+        <button class="btn" onclick="closeModal()">キャンセル</button>
+        <button class="btn btn-p" onclick="saveStore()">保存してダウンロード</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const JSON_URL="stores.json";
+let stores=[],curId=null,curTab='ov',editingId=null;
+
+// ── Data load ─────────────────────────────────────────────────────
 async function loadData(){
   document.getElementById('meta').textContent='読み込み中...';
   try{
@@ -127,6 +235,7 @@ async function loadData(){
   }
 }
 
+// ── Chips ─────────────────────────────────────────────────────────
 function renderChips(){
   const el=document.getElementById('chips');el.innerHTML='';
   stores.forEach(s=>{
@@ -137,8 +246,15 @@ function renderChips(){
     b.onclick=()=>{curId=s.id;renderChips();renderPanel()};
     el.appendChild(b);
   });
+  // 編集ボタン
+  const e=document.createElement('button');
+  e.className='chip';e.style.borderStyle='dashed';
+  e.innerHTML='✏️ 編集';
+  e.onclick=()=>{const s=get();if(s)openModal(s.id)};
+  el.appendChild(e);
 }
 
+// ── Tab ───────────────────────────────────────────────────────────
 function switchTab(t){
   curTab=t;
   const tabs=['ov','co','ck','st'];
@@ -150,13 +266,13 @@ function switchTab(t){
 
 function get(){return stores.find(s=>s.id===curId)||stores[0]}
 
+// ── Tags / helpers ────────────────────────────────────────────────
 function itag(v){const m={最高:'tg-d',高:'tg-w',中:'tg-w',低:'tg-s'};return`<span class="tg ${m[v]||'tg-n'}">${v}</span>`}
 function stag(v){const m={開店済:'tg-s',出店前:'tg-w',準備中:'tg-i'};return`<span class="tg ${m[v]||'tg-n'}">${v}</span>`}
-function stag2(v){const m={'◎':'tg-d','○':'tg-w','△':'tg-n'};return`<span class="tg ${m[v]||'tg-n'}">${v}</span>`}
 function toggleEv(id){document.getElementById(id)?.classList.toggle('open')}
 
 function evHTML(ev,sid){
-  if(!ev||!ev.length)return'<div style="font-size:12px;color:var(--faint)">根拠情報は未入力です。stores.jsonのevidenceに記入してください。</div>';
+  if(!ev||!ev.length)return'<div style="font-size:12px;color:var(--faint)">根拠情報未入力（編集から追加できます）</div>';
   return ev.map((e,i)=>`
     <div style="padding:6px 0;border-bottom:1px solid var(--border)">
       <button class="ev-btn" onclick="toggleEv('ev-${sid}-${i}')">🔗 根拠：${e.label}</button>
@@ -164,6 +280,7 @@ function evHTML(ev,sid){
     </div>`).join('');
 }
 
+// ── Render panels ─────────────────────────────────────────────────
 function renderPanel(){
   const s=get();if(!s)return;
   if(curTab==='ov')renderOv(s);
@@ -186,6 +303,7 @@ function renderOv(s){
         <div class="st">商圏特性</div>
         <div class="row"><span style="color:var(--muted);font-size:12px;width:80px;flex-shrink:0">購買傾向</span><span>${s.behavior||'—'}</span></div>
         <div class="row"><span style="color:var(--muted);font-size:12px;width:80px;flex-shrink:0">強い需要</span><span>${s.demand||'—'}</span></div>
+        <div class="row"><span style="color:var(--muted);font-size:12px;width:80px;flex-shrink:0">近隣駅利用者</span><span>${s.station_users||'—'}</span></div>
         <div class="row"><span style="color:var(--muted);font-size:12px;width:80px;flex-shrink:0">競合激戦度</span><span>${itag(s.intensity)}</span></div>
         <div class="row"><span style="color:var(--muted);font-size:12px;width:80px;flex-shrink:0">開店予定</span><span>${s.open_date||'未定'}</span></div>
         <div class="row"><span style="color:var(--muted);font-size:12px;width:80px;flex-shrink:0">ステータス</span><span>${stag(s.status)}</span></div>
@@ -193,14 +311,14 @@ function renderOv(s){
       </div>
       <div class="card">
         <div class="st">現地確認が必要な情報</div>
-        ${(s.needs||[]).map(n=>`<div class="row"><span style="flex:1">${n}</span><span class="nb">未入力</span></div>`).join('')||'<div style="font-size:13px;color:var(--faint)">stores.jsonのneedsに記入してください。</div>'}
+        ${(s.needs||[]).map(n=>`<div class="row"><span style="flex:1">${n}</span><span class="nb">未入力</span></div>`).join('')||'<div style="font-size:13px;color:var(--faint)">編集から追加できます</div>'}
       </div>
     </div>`;
 }
 
 function renderCo(s){
-  const rows=(s.comps||[]).map(c=>`<tr><td style="font-weight:500">${c}</td><td style="font-size:12px;color:var(--muted)">stores.jsonのcompDetailに記入</td></tr>`).join('')
-    ||'<tr><td colspan="2" style="color:var(--faint);font-size:12px">stores.jsonのcompsに競合を記入してください</td></tr>';
+  const rows=(s.comps||[]).map(c=>`<tr><td style="font-weight:500">${c}</td><td style="font-size:12px;color:var(--muted)">—</td></tr>`).join('')
+    ||'<tr><td colspan="2" style="color:var(--faint);font-size:12px">編集から競合を追加できます</td></tr>';
   document.getElementById('p-co').innerHTML=`
     <div class="g2">
       <div class="card">
@@ -209,7 +327,7 @@ function renderCo(s){
       </div>
       <div class="card">
         <div class="st">勝ち筋メモ</div>
-        <div style="font-size:13px;line-height:1.7">${s.strategy||'stores.jsonのstrategyに記入してください。'}</div>
+        <div style="font-size:13px;line-height:1.7">${s.strategy||'編集から記入できます。'}</div>
         ${(s.risks||[]).length?`<div style="margin-top:12px"><div class="st">リスク</div>${s.risks.map(r=>`<div class="row"><span>⚠️ ${r}</span></div>`).join('')}</div>`:''}
         ${(s.winPoints||[]).length?`<div style="margin-top:12px"><div class="st">差別化優位点</div>${s.winPoints.map(w=>`<div class="row"><span>⚡ ${w}</span></div>`).join('')}</div>`:''}
       </div>
@@ -228,7 +346,7 @@ function renderCk(s){
       <span class="tg tg-w" style="margin-left:4px">… 要検討</span>
       <span class="tg tg-n" style="margin-left:4px">— 未着手</span>
     </div>
-    <div class="card">${items||'<div style="color:var(--faint);font-size:13px">stores.jsonのchecksに記入してください。</div>'}</div>`;
+    <div class="card">${items||'<div style="color:var(--faint);font-size:13px">チェックリストは自動で設定されます。</div>'}</div>`;
 }
 
 function renderSt(s){
@@ -239,7 +357,7 @@ function renderSt(s){
     {l:'安定期',  w:'W17〜',   bg:'#EEEDFE',c:'#3C3489'},
   ];
   const props=[
-    {n:'1',bg:'#E6F1FB',c:'#0C447C',t:'勝ち筋の一点集中',b:s.strategy||'stores.jsonのstrategyに記入してください。'},
+    {n:'1',bg:'#E6F1FB',c:'#0C447C',t:'勝ち筋の一点集中',b:s.strategy||'編集から勝ち筋を記入してください。'},
     {n:'2',bg:'#EAF3DE',c:'#27500A',t:'TRIAL+会員獲得計画',b:'プレ開店3,000件→W1最大化。昼夜間人口比に合わせた告知チャネルを設計する。'},
     {n:'3',bg:'#FAEEDA',c:'#633806',t:'SKU・人時の絞り込み',b:'「置かないもの」を先に決める。ゴンドラ1本あたり売上をSuC全店平均20万円超に設計する。'},
     {n:'4',bg:'#EEEDFE',c:'#3C3489',t:'開店2週間KPIで即タスクフォース起動',b:'客数・部門別売上・会員獲得数・買上点数を日次監視。2週間で手応えがなければ支社長主導で即時対応。'},
@@ -247,6 +365,165 @@ function renderSt(s){
   document.getElementById('p-st').innerHTML=`
     <div class="phases">${phases.map(p=>`<div class="ph" style="background:${p.bg}"><div class="ph-l" style="color:${p.c}">${p.l}</div><div class="ph-w" style="color:${p.c}">${p.w}</div></div>`).join('')}</div>
     ${props.map(p=>`<div class="prop"><div class="prop-h"><span class="prop-num" style="background:${p.bg};color:${p.c}">${p.n}</span>${p.t}</div><div class="prop-body">${p.b}</div></div>`).join('')}`;
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────
+function addRow(containerId, placeholder1, placeholder2){
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:center';
+  if(placeholder2){
+    div.innerHTML=`<input placeholder="${placeholder1}" style="flex:1;font-size:13px;padding:6px 10px;border-radius:var(--r);border:1px solid var(--border-s);background:var(--surface);color:var(--text)">
+      <input placeholder="${placeholder2}" style="flex:1;font-size:13px;padding:6px 10px;border-radius:var(--r);border:1px solid var(--border-s);background:var(--surface);color:var(--text)">
+      <button onclick="this.parentNode.remove()" style="background:none;border:none;cursor:pointer;color:var(--faint);font-size:16px;padding:0 4px">✕</button>`;
+  } else {
+    div.innerHTML=`<input placeholder="${placeholder1}" style="flex:1;font-size:13px;padding:6px 10px;border-radius:var(--r);border:1px solid var(--border-s);background:var(--surface);color:var(--text)">
+      <button onclick="this.parentNode.remove()" style="background:none;border:none;cursor:pointer;color:var(--faint);font-size:16px;padding:0 4px">✕</button>`;
+  }
+  document.getElementById(containerId).appendChild(div);
+}
+
+function addCompRow(){addRow('comps-list','競合店舗名（例：イオン〇〇店）')}
+function addRiskRow(){addRow('risks-list','リスク内容')}
+function addNeedRow(){addRow('needs-list','確認が必要な情報')}
+function addEvRow(){addRow('ev-list','ラベル（例：人口データ）','URL（例：https://...）')}
+
+function getListValues(containerId, twoCol){
+  return Array.from(document.getElementById(containerId).children).map(div=>{
+    const inputs=div.querySelectorAll('input');
+    if(twoCol) return inputs[0]?.value.trim()&&inputs[1]?.value.trim() ? {label:inputs[0].value.trim(),url:inputs[1].value.trim()} : null;
+    return inputs[0]?.value.trim()||null;
+  }).filter(Boolean);
+}
+
+function populateList(containerId, items, twoCol){
+  document.getElementById(containerId).innerHTML='';
+  (items||[]).forEach(item=>{
+    addRow(containerId, twoCol?'ラベル':'項目', twoCol?'URL':null);
+    const div=document.getElementById(containerId).lastChild;
+    const inputs=div.querySelectorAll('input');
+    if(twoCol){inputs[0].value=item.label||'';inputs[1].value=item.url||'';}
+    else{inputs[0].value=typeof item==='string'?item:'';}
+  });
+}
+
+// ── Modal open/close ──────────────────────────────────────────────
+function openModal(id){
+  editingId=id;
+  const s=id?stores.find(x=>x.id===id):null;
+  document.getElementById('modal-title-text').textContent=s?`${s.name} を編集`:'店舗を追加';
+  document.getElementById('btn-delete').style.display=s?'inline-flex':'none';
+
+  // フォームに値をセット
+  document.getElementById('f-name').value=s?.name||'';
+  document.getElementById('f-loc').value=s?.loc||'';
+  document.getElementById('f-status').value=s?.status||'準備中';
+  document.getElementById('f-open').value=s?.open_date||'';
+  document.getElementById('f-pop').value=s?.pop||'';
+  document.getElementById('f-aging').value=s?.aging||'';
+  document.getElementById('f-ratio').value=s?.ratio||'';
+  document.getElementById('f-target').value=s?.target||'';
+  document.getElementById('f-alert').value=s?.alert||'';
+  document.getElementById('f-intensity').value=s?.intensity||'中';
+  document.getElementById('f-demand').value=s?.demand||'';
+  document.getElementById('f-behavior').value=s?.behavior||'';
+  document.getElementById('f-strategy').value=s?.strategy||'';
+
+  populateList('comps-list', s?.comps||[], false);
+  populateList('risks-list', s?.risks||[], false);
+  populateList('needs-list', s?.needs||[], false);
+  populateList('ev-list', s?.evidence||[], true);
+
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeModal(){
+  document.getElementById('overlay').classList.remove('open');
+}
+
+// ── Save & download ───────────────────────────────────────────────
+function defaultChecks(){
+  return[
+    {status:'o',label:'「誰から何を奪うか」の意志決定',note:'勝ち筋を1〜2本に絞り込む。'},
+    {status:'o',label:'月次損益シミュレーション',note:'TRIAL+会員獲得計画と販管費を組み合わせた月次損益計画を作成する。'},
+    {status:'-',label:'初速90日の話題性施策',note:'地域コラボ・感情訴求MDを開店前に確定させる。'},
+    {status:'-',label:'「置かない商品」の意志決定',note:'非食品は勝てるカテゴリーに傾斜。初期SKUの絞り込みを行う。'},
+    {status:'-',label:'TRIAL+リピート促進設計',note:'スタンプ・個別通知・クーポンの具体的設計を確定させる。'},
+  ];
+}
+
+function saveStore(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){alert('店舗名を入力してください');return;}
+
+  const newData={
+    id: editingId || 'store_'+Date.now(),
+    name,
+    loc:document.getElementById('f-loc').value.trim(),
+    status:document.getElementById('f-status').value,
+    open_date:document.getElementById('f-open').value.trim(),
+    pop:document.getElementById('f-pop').value.trim(),
+    aging:document.getElementById('f-aging').value.trim(),
+    ratio:document.getElementById('f-ratio').value.trim(),
+    target:document.getElementById('f-target').value.trim(),
+    alert:document.getElementById('f-alert').value.trim(),
+    alertType:'i',
+    intensity:document.getElementById('f-intensity').value,
+    comps:getListValues('comps-list',false),
+    demand:document.getElementById('f-demand').value.trim(),
+    behavior:document.getElementById('f-behavior').value.trim(),
+    strategy:document.getElementById('f-strategy').value.trim(),
+    risks:getListValues('risks-list',false),
+    evidence:getListValues('ev-list',true),
+    needs:getListValues('needs-list',false),
+    checks: editingId ? (stores.find(s=>s.id===editingId)?.checks||defaultChecks()) : defaultChecks(),
+    winPoints: editingId ? (stores.find(s=>s.id===editingId)?.winPoints||[]) : [],
+  };
+
+  if(editingId){
+    const idx=stores.findIndex(s=>s.id===editingId);
+    if(idx>=0)stores[idx]=newData;
+  } else {
+    stores.push(newData);
+    curId=newData.id;
+  }
+
+  // JSONダウンロード
+  const blob=new Blob([JSON.stringify(stores,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='stores.json';a.click();
+  URL.revokeObjectURL(url);
+
+  closeModal();
+  renderChips();
+  renderPanel();
+
+  // バナー表示
+  const banner=document.getElementById('dlBanner');
+  banner.classList.add('show');
+  setTimeout(()=>banner.classList.remove('show'),15000);
+}
+
+// ── Delete ────────────────────────────────────────────────────────
+function deleteStore(){
+  const s=stores.find(x=>x.id===editingId);
+  if(!s||!confirm(`「${s.name}」を削除しますか？`))return;
+  stores=stores.filter(x=>x.id!==editingId);
+  curId=stores[0]?.id||null;
+
+  const blob=new Blob([JSON.stringify(stores,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='stores.json';a.click();
+  URL.revokeObjectURL(url);
+
+  closeModal();
+  renderChips();
+  renderPanel();
+
+  const banner=document.getElementById('dlBanner');
+  banner.classList.add('show');
+  setTimeout(()=>banner.classList.remove('show'),15000);
 }
 
 loadData();
