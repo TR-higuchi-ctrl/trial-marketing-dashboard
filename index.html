@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>トライアル西友 新規出店戦略ダッシュボード</title>
+
+<!-- ============================================================
+  ★ 設定：ここだけ変更してください
+  GoogleスプレッドシートをCSV公開した後、そのURLを貼り付けてください。
+  手順：スプレッドシート → ファイル → ウェブに公開 → storesシート → CSV → URLをコピー
+============================================================ -->
+<script>
+  const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTrvatRqZtAtDaKRwc_nvCV9ZjHhGiBOZ8bX1O07j62EHF26Jyu3ZDp4ba6cPEDQCVAq99eoxvUhUmu/pub?gid=1238893928&single=true&output=csv";
+  // 例: "https://docs.google.com/spreadsheets/d/XXXXX/pub?gid=0&single=true&output=csv"
+</script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.2);
+    --text: #1a1a1a;
+    --text-muted: #666;
+    --text-faint: #999;
+    --blue: #185FA5;
+    --blue-bg: #e6f1fb;
+    --blue-text: #0C447C;
+    --amber: #BA7517;
+    --amber-bg: #FAEEDA;
+    --amber-text: #633806;
+    --green-bg: #EAF3DE;
+    --green-text: #27500A;
+    --red-bg: #FCEBEB;
+    --red-text: #A32D2D;
+    --gray-bg: #f1efe8;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+  /* Layout */
+  .app { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 1.5rem; flex-wrap: wrap; gap: 8px; }
+  .topbar h1 { font-size: 17px; font-weight: 600; color: var(--text); }
+  .topbar-meta { font-size: 12px; color: var(--text-faint); }
+
+  /* Store chips */
+  .store-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .chip { padding: 6px 16px; font-size: 13px; border: 1px solid var(--border-strong);
+          border-radius: 20px; cursor: pointer; background: var(--surface);
+          color: var(--text-muted); transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+  .chip:hover { background: var(--gray-bg); }
+  .chip.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 1.25rem; flex-wrap: wrap;
+          border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .tab { padding: 7px 16px; font-size: 13px; border: none; border-bottom: 2px solid transparent;
+         cursor: pointer; background: none; color: var(--text-muted);
+         margin-bottom: -1px; transition: all .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 500; }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Grid */
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+  .g4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+         gap: 10px; margin-bottom: 1rem; }
+  @media (max-width: 640px) { .g2 { grid-template-columns: 1fr; } }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border);
+          border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .card:last-child { margin-bottom: 0; }
+
+  /* Metric */
+  .met { background: var(--gray-bg); border-radius: var(--radius); padding: .75rem 1rem; }
+  .met-l { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+  .met-v { font-size: 19px; font-weight: 600; color: var(--text); line-height: 1.2; }
+  .met-s { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+
+  /* Section title */
+  .st { font-size: 11px; font-weight: 600; color: var(--text-muted);
+        letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
+
+  /* Tags */
+  .tg { display: inline-flex; align-items: center; font-size: 11px;
+        padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+  .tg-d { background: var(--red-bg); color: var(--red-text); }
+  .tg-w { background: var(--amber-bg); color: var(--amber-text); }
+  .tg-i { background: var(--blue-bg); color: var(--blue-text); }
+  .tg-s { background: var(--green-bg); color: var(--green-text); }
+  .tg-n { background: var(--gray-bg); color: var(--text-muted); }
+
+  /* Rows */
+  .row { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0;
+         border-bottom: 1px solid var(--border); font-size: 13px; }
+  .row:last-child { border-bottom: none; }
+  .row-icon { color: var(--text-faint); flex-shrink: 0; width: 16px; text-align: center; margin-top: 1px; }
+  .need-badge { font-size: 11px; padding: 2px 7px; border-radius: 4px;
+                background: var(--amber-bg); color: var(--amber-text); margin-left: auto; flex-shrink: 0; }
+
+  /* Alert */
+  .alert { border-left: 3px solid; padding: .7rem 1rem;
+           border-radius: 0 var(--radius) var(--radius) 0; margin-bottom: 1rem;
+           font-size: 13px; line-height: 1.55; }
+  .al-i { border-color: var(--blue); background: var(--blue-bg); color: var(--blue-text); }
+  .al-w { border-color: var(--amber); background: var(--amber-bg); color: var(--amber-text); }
+
+  /* Evidence */
+  .ev-btn { font-size: 11px; color: var(--text-faint); cursor: pointer; background: none;
+            border: none; padding: 4px 0; display: inline-flex; align-items: center; gap: 4px; }
+  .ev-btn:hover { color: var(--blue); }
+  .ev-panel { display: none; background: var(--gray-bg); border-left: 2px solid var(--border-strong);
+              border-radius: 0 var(--radius) var(--radius) 0; padding: .5rem .75rem;
+              margin: 4px 0 6px; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+  .ev-panel.open { display: block; }
+  .ev-panel a { color: var(--blue); word-break: break-all; }
+
+  /* Check */
+  .ck { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0;
+        border-bottom: 1px solid var(--border); font-size: 13px; }
+  .ck:last-child { border-bottom: none; }
+  .ck-dot { width: 20px; height: 20px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; }
+  .ck-g { background: var(--green-bg); color: var(--green-text); }
+  .ck-o { background: var(--amber-bg); color: var(--amber-text); }
+  .ck-gr { background: var(--gray-bg); color: var(--text-faint); }
+  .ck-label { font-weight: 500; margin-bottom: 2px; }
+  .ck-note { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+  /* Proposal */
+  .prop { border: 1px solid var(--border); border-radius: var(--radius-lg);
+          padding: 1rem 1.25rem; margin-bottom: .75rem; }
+  .prop-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+            font-size: 13px; font-weight: 600; }
+  .prop-num { width: 22px; height: 22px; border-radius: 50%;
+              display: inline-flex; align-items: center; justify-content: center;
+              font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .prop-body { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+  /* Phase strip */
+  .phases { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .ph { flex: 1; min-width: 90px; padding: 8px; border-radius: var(--radius); text-align: center; }
+  .ph-l { font-size: 11px; font-weight: 600; }
+  .ph-w { font-size: 10px; margin-top: 2px; opacity: .8; }
+
+  /* Comp table */
+  .ctbl { width: 100%; font-size: 12px; border-collapse: collapse; }
+  .ctbl th { text-align: left; padding: 6px 8px; color: var(--text-muted);
+             font-weight: 600; font-size: 11px; border-bottom: 2px solid var(--border); }
+  .ctbl td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .ctbl tr:last-child td { border-bottom: none; }
+  .ctbl tr.highlight { background: var(--blue-bg); }
+  .ctbl tr.highlight td { color: var(--blue-text); font-weight: 600; }
+
+  /* Loading / Empty */
+  .loading { text-align: center; padding: 3rem 1rem; color: var(--text-faint); }
+  .spinner { display: inline-block; width: 24px; height: 24px;
+             border: 2px solid var(--border); border-top-color: var(--blue);
+             border-radius: 50%; animation: spin .6s linear infinite; margin-bottom: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Action button */
+  .btn { padding: 7px 16px; font-size: 13px; border: 1px solid var(--border-strong);
+         border-radius: var(--radius); cursor: pointer; background: var(--surface);
+         color: var(--text); display: inline-flex; align-items: center; gap: 5px;
+         text-decoration: none; transition: background .12s; }
+  .btn:hover { background: var(--gray-bg); }
+  .btn-p { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn-p:hover { background: var(--blue-text); }
+
+  /* Error banner */
+  .error-banner { background: var(--red-bg); color: var(--red-text); border: 1px solid #f09595;
+                  border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem;
+                  font-size: 13px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div>
+      <h1>🏪 新規出店戦略ダッシュボード</h1>
+      <div class="topbar-meta" id="last-updated">データを読み込み中...</div>
+    </div>
+    <button class="btn" onclick="loadData()">↻ 更新</button>
+  </div>
+
+  <div class="store-chips" id="storeChips"></div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview')">① 商圏概要</button>
+    <button class="tab" onclick="switchTab('competitor')">② 競合分析</button>
+    <button class="tab" onclick="switchTab('checklist')">③ 前始末チェック</button>
+    <button class="tab" onclick="switchTab('strategy')">④ 戦略提案</button>
+  </div>
+
+  <div id="panel-overview"  class="panel active"><div class="loading"><div class="spinner"></div><br>読み込み中</div></div>
+  <div id="panel-competitor" class="panel"></div>
+  <div id="panel-checklist" class="panel"></div>
+  <div id="panel-strategy"  class="panel"></div>
+</div>
+
+<script>
+// ── Data & State ─────────────────────────────────────────────────
+let stores = [];
+let currentId = null;
+let currentTab = 'overview';
+
+// ── Default checklist (used when check_json column is empty) ─────
+function defaultChecks(s) {
+  return [
+    {status:'o', label:'「誰から何を奪うか」の意志決定', note:`${s.comps ? s.comps[0] : '競合'}等の弱点を突く勝ち筋を1〜2本に絞り込む。`},
+    {status:'o', label:'月次損益シミュレーション', note:'TRIAL+会員獲得計画と販管費を組み合わせた月次損益計画を前始末として作成する。'},
+    {status:'-', label:'初速90日の話題性施策', note:'地域コラボ・感情訴求MD（ソフトクリーム等）を開店前に確定させる。'},
+    {status:'-', label:'「置かない商品」の意志決定', note:'非食品は勝てるカテゴリーに傾斜。初期SKUの絞り込みを行う。'},
+    {status:'-', label:'TRIAL+リピート促進設計', note:'スタンプ・個別通知・クーポンの具体的設計を確定させる。'},
+  ];
+}
+
+// ── CSV parser ───────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 3) return [];
+  const headers = lines[1].split(',').map(h => h.replace(/^"|"$/g,'').trim());
+  const result = [];
+  for (let i = 2; i < lines.length; i++) {
+    const vals = parseCSVLine(lines[i]);
+    if (!vals[0]) continue;
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = (vals[idx] || '').trim(); });
+    result.push(obj);
+  }
+  return result;
+}
+
+function parseCSVLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; continue; }
+    if (c === ',' && !inQ) { result.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── Transform raw CSV row → store object ─────────────────────────
+function rowToStore(r) {
+  const compsRaw = r.comps || '';
+  const risksRaw = r.risks || '';
+  const needsRaw = r.needs || '';
+
+  const evidence = [];
+  for (let n = 1; n <= 3; n++) {
+    const label = r[`evidence_${n}_label`];
+    const url   = r[`evidence_${n}_url`];
+    if (label && url) evidence.push({label, url});
+  }
+
+  let checks;
+  try {
+    checks = r.check_json ? JSON.parse(r.check_json) : null;
+  } catch(e) { checks = null; }
+
+  return {
+    id:        r.id || 'store_' + Math.random().toString(36).slice(2),
+    name:      r.name || '（名称未設定）',
+    loc:       r.loc || '',
+    status:    r.status || '準備中',
+    open_date: r.open_date || '',
+    pop:       r.pop || '—',
+    aging:     r.aging || '—',
+    ratio:     r.ratio || '—',
+    target:    r.target || '—',
+    alert:     r.alert || '',
+    alertType: r.alertType || 'i',
+    intensity: r.intensity || '中',
+    comps:     compsRaw ? compsRaw.split(',').map(s=>s.trim()).filter(Boolean) : [],
+    demand:    r.demand || '—',
+    behavior:  r.behavior || '—',
+    strategy:  r.win_strategy || '',
+    risks:     risksRaw ? risksRaw.split(',').map(s=>s.trim()).filter(Boolean) : [],
+    evidence,
+    needs:     needsRaw ? needsRaw.split(',').map(s=>s.trim()).filter(Boolean) : [],
+    checks:    checks || null,
+    notes:     r.notes || '',
+  };
+}
+
+// ── Load data from Google Sheets CSV ────────────────────────────
+async function loadData() {
+  document.getElementById('last-updated').textContent = '読み込み中...';
+
+  if (!SHEET_CSV_URL || SHEET_CSV_URL.includes('ここに')) {
+    showConfigError();
+    return;
+  }
+
+  try {
+    const res = await fetch(SHEET_CSV_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    stores = rows.map(rowToStore);
+    if (!currentId || !stores.find(s => s.id === currentId)) {
+      currentId = stores[0]?.id || null;
+    }
+    const now = new Date().toLocaleString('ja-JP');
+    document.getElementById('last-updated').textContent = `最終更新: ${now}`;
+    renderChips();
+    renderPanel();
+  } catch(e) {
+    document.getElementById('last-updated').textContent = '読み込みエラー';
+    showFetchError(e.message);
+  }
+}
+
+function showConfigError() {
+  document.getElementById('panel-overview').innerHTML = `
+    <div class="error-banner">
+      <strong>⚠ 設定が必要です</strong><br><br>
+      このダッシュボードはGoogleスプレッドシートからデータを読み込みます。<br>
+      HTMLファイルの先頭にある <code>SHEET_CSV_URL</code> にCSV公開URLを設定してください。<br><br>
+      <strong>手順：</strong><br>
+      1. Googleスプレッドシートを開く<br>
+      2. メニュー「ファイル」→「ウェブに公開」<br>
+      3. 「stores」シートを「CSV」形式で公開<br>
+      4. 発行されたURLをコピーして <code>SHEET_CSV_URL</code> に貼り付ける<br>
+      5. HTMLをGitHub Pagesにアップロードして完了
+    </div>`;
+  document.getElementById('panel-overview').classList.add('active');
+}
+
+function showFetchError(msg) {
+  document.getElementById('panel-overview').innerHTML = `
+    <div class="error-banner">
+      <strong>⚠ データの読み込みに失敗しました</strong><br>
+      ${msg}<br><br>
+      スプレッドシートの「ウェブに公開」設定を確認してください。<br>
+      CORSエラーの場合はURLが正しいCSV公開URLか確認してください。
+    </div>`;
+}
+
+// ── Render chips ─────────────────────────────────────────────────
+function renderChips() {
+  const el = document.getElementById('storeChips');
+  el.innerHTML = '';
+  stores.forEach(s => {
+    const color = s.status === '開店済' ? '#1D9E75' : s.status === '出店前' ? '#BA7517' : '#888780';
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (s.id === currentId ? ' active' : '');
+    btn.innerHTML = `<span class="dot" style="background:${color}"></span>${s.name}`;
+    btn.onclick = () => { currentId = s.id; renderChips(); renderPanel(); };
+    el.appendChild(btn);
+  });
+}
+
+// ── Tab switch ───────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  const names = ['overview','competitor','checklist','strategy'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', names[i] === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  renderPanel();
+}
+
+// ── Render panel ─────────────────────────────────────────────────
+function renderPanel() {
+  const s = stores.find(x => x.id === currentId);
+  if (!s) return;
+  if (currentTab === 'overview')    renderOverview(s);
+  if (currentTab === 'competitor')  renderCompetitor(s);
+  if (currentTab === 'checklist')   renderChecklist(s);
+  if (currentTab === 'strategy')    renderStrategy(s);
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+function intensityTag(v) {
+  const m = {最高:'tg-d',高:'tg-w',中:'tg-w',低:'tg-s'};
+  return `<span class="tg ${m[v]||'tg-n'}">${v}</span>`;
+}
+function statusTag(v) {
+  const m = {'開店済':'tg-s','出店前':'tg-w','準備中':'tg-i'};
+  return `<span class="tg ${m[v]||'tg-n'}">${v}</span>`;
+}
+function evHTML(evidence, storeId) {
+  if (!evidence.length) return '<div style="font-size:12px;color:var(--text-faint)">根拠情報は未入力です。スプレッドシートのevidence_*列に記入してください。</div>';
+  return evidence.map((e,i) => `
+    <div style="padding:6px 0;border-bottom:1px solid var(--border)">
+      <button class="ev-btn" onclick="toggleEv('ev-${storeId}-${i}')">
+        🔗 根拠：${e.label}
+      </button>
+      <div id="ev-${storeId}-${i}" class="ev-panel">
+        <a href="${e.url}" target="_blank" rel="noopener">${e.url}</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ① Overview
+function renderOverview(s) {
+  document.getElementById('panel-overview').innerHTML = `
+    ${s.alert ? `<div class="alert al-${s.alertType}">📍 ${s.alert}</div>` : ''}
+    <div class="g4">
+      <div class="met"><div class="met-l">人口</div><div class="met-v">${s.pop}</div></div>
+      <div class="met"><div class="met-l">高齢化率</div><div class="met-v">${s.aging}</div></div>
+      <div class="met"><div class="met-l">昼夜間人口比</div><div class="met-v">${s.ratio}</div></div>
+      <div class="met"><div class="met-l">主要ターゲット</div><div class="met-v" style="font-size:14px">${s.target}</div></div>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="st">商圏特性</div>
+        <div class="row"><span class="row-icon">🛒</span><span style="color:var(--text-muted);font-size:12px;width:76px;flex-shrink:0">購買傾向</span><span>${s.behavior}</span></div>
+        <div class="row"><span class="row-icon">⭐</span><span style="color:var(--text-muted);font-size:12px;width:76px;flex-shrink:0">強い需要</span><span>${s.demand}</span></div>
+        <div class="row"><span class="row-icon">⚔️</span><span style="color:var(--text-muted);font-size:12px;width:76px;flex-shrink:0">競合激戦度</span><span>${intensityTag(s.intensity)}</span></div>
+        <div class="row"><span class="row-icon">📅</span><span style="color:var(--text-muted);font-size:12px;width:76px;flex-shrink:0">開店予定</span><span>${s.open_date || '未定'}</span></div>
+        <div class="row"><span class="row-icon">🏷</span><span style="color:var(--text-muted);font-size:12px;width:76px;flex-shrink:0">ステータス</span><span>${statusTag(s.status)}</span></div>
+        <div style="margin-top:12px">
+          <div class="st">根拠・情報ソース</div>
+          ${evHTML(s.evidence, s.id)}
+        </div>
+      </div>
+      <div class="card">
+        <div class="st">現地確認が必要な情報</div>
+        ${s.needs.length ? s.needs.map(n => `
+          <div class="row">
+            <span class="row-icon">○</span>
+            <span style="flex:1">${n}</span>
+            <span class="need-badge">未入力</span>
+          </div>`).join('') : '<div style="font-size:13px;color:var(--text-faint)">スプレッドシートのneeds列に記入してください。</div>'}
+        ${s.notes ? `<div style="margin-top:12px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:10px">${s.notes}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ② Competitor
+function renderCompetitor(s) {
+  const compRows = s.comps.map((c,i) => `
+    <tr>
+      <td style="font-weight:500">${c}</td>
+      <td style="font-size:12px;color:var(--text-muted)">現地確認・記入してください</td>
+    </tr>`).join('') || '<tr><td colspan="2" style="color:var(--text-faint);font-size:12px">スプレッドシートのcomps列に競合を入力してください</td></tr>';
+
+  document.getElementById('panel-competitor').innerHTML = `
+    <div class="g2">
+      <div class="card">
+        <div class="st">主要競合一覧</div>
+        <table class="ctbl">
+          <thead><tr><th>競合店舗</th><th>特記・強み</th></tr></thead>
+          <tbody>${compRows}</tbody>
+        </table>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-faint)">
+          ※ 詳細なポジショニング比較はスプレッドシートに列を追加してClaudeに依頼してください。
+        </div>
+      </div>
+      <div class="card">
+        <div class="st">勝ち筋メモ</div>
+        <div style="font-size:13px;line-height:1.7;color:var(--text)">${s.strategy || 'スプレッドシートのwin_strategy列に記入してください。'}</div>
+        ${s.risks.length ? `
+          <div style="margin-top:12px">
+            <div class="st">リスク</div>
+            ${s.risks.map(r => `<div class="row"><span class="row-icon">⚠️</span><span>${r}</span></div>`).join('')}
+          </div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ③ Checklist
+function renderChecklist(s) {
+  const checks = s.checks || defaultChecks(s);
+  const statusMap = {
+    g:  ['ck-g',  '✓'],
+    o:  ['ck-o',  '…'],
+    '-':['ck-gr', '—'],
+  };
+  const items = checks.map(c => {
+    const [cls, icon] = statusMap[c.status] || statusMap['-'];
+    return `<div class="ck">
+      <div class="ck-dot ${cls}">${icon}</div>
+      <div><div class="ck-label">${c.label}</div><div class="ck-note">${c.note}</div></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('panel-checklist').innerHTML = `
+    <div class="alert al-i">
+      週報「前始末5原則」の適用チェック。
+      <span class="tg tg-s" style="margin-left:6px">✓ 確認済</span>
+      <span class="tg tg-w" style="margin-left:4px">… 要検討</span>
+      <span class="tg tg-n" style="margin-left:4px">— 未着手</span>
+    </div>
+    <div class="card">${items}</div>
+    <div style="font-size:12px;color:var(--text-faint)">
+      ※ チェック内容をカスタマイズする場合はスプレッドシートのcheck_json列にJSONを記入するか、Claudeに依頼してください。
+    </div>`;
+}
+
+// ④ Strategy
+function renderStrategy(s) {
+  const phases = [
+    {label:'開店準備',week:'〜開店前',bg:'#E6F1FB',tc:'#0C447C'},
+    {label:'初速期',  week:'W1〜W8',  bg:'#EAF3DE',tc:'#27500A'},
+    {label:'定着期',  week:'W9〜W16', bg:'#FAEEDA',tc:'#633806'},
+    {label:'安定期',  week:'W17〜',   bg:'#EEEDFE',tc:'#3C3489'},
+  ];
+  const phaseHTML = phases.map(p => `
+    <div class="ph" style="background:${p.bg}">
+      <div class="ph-l" style="color:${p.tc}">${p.label}</div>
+      <div class="ph-w" style="color:${p.tc}">${p.week}</div>
+    </div>`).join('');
+
+  const props = [
+    {num:'1',bg:'#E6F1FB',tc:'#0C447C', title:'勝ち筋の一点集中', body: s.strategy || '勝ち筋メモがありません。スプレッドシートのwin_strategy列に記入してください。'},
+    {num:'2',bg:'#EAF3DE',tc:'#27500A', title:'TRIAL+会員獲得計画', body:'プレ開店3,000件→W1最大化。昼夜間人口比に合わせた告知チャネルを設計する。'},
+    {num:'3',bg:'#FAEEDA',tc:'#633806', title:'SKU・人時の絞り込み', body:'「置かないもの」を先に決める。ゴンドラ1本あたり売上をSuC全店平均20万円超に設計する。'},
+    {num:'4',bg:'#EEEDFE',tc:'#3C3489', title:'開店2週間KPIで即タスクフォース起動', body:'客数・部門別売上・会員獲得数・買上点数を日次監視。2週間で手応えがなければ支社長主導で即時対応。'},
+  ].map(p => `
+    <div class="prop">
+      <div class="prop-h">
+        <span class="prop-num" style="background:${p.bg};color:${p.tc}">${p.num}</span>
+        ${p.title}
+      </div>
+      <div class="prop-body">${p.body}</div>
+    </div>`).join('');
+
+  document.getElementById('panel-strategy').innerHTML = `
+    <div class="phases">${phaseHTML}</div>
+    ${props}`;
+}
+
+// ── Evidence toggle ───────────────────────────────────────────────
+function toggleEv(id) {
+  document.getElementById(id)?.classList.toggle('open');
+}
+
+// ── Boot ─────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
